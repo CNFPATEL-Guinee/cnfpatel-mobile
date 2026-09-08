@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "173620654175",
+    "project_id": "cnfpatel",
+    "storage_bucket": "cnfpatel.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:173620654175:android:da2ea920283ede3536abea",
+        "android_client_info": {
+          "package_name": "com.example.cnfpatel"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCO0GdFPdZaecUXe3YtFDohMOLpMuENAkg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

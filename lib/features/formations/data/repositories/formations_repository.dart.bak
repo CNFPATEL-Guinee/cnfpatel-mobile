@@ -1,0 +1,43 @@
+import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../../core/api/api_client.dart';
+import '../../../../core/api/api_endpoints.dart';
+import '../models/cours_model.dart';
+import '../models/formation_model.dart';
+import '../models/module_model.dart';
+
+// Appelle les vraies routes du backend (aucune donnée simulée).
+class FormationsRepository {
+  final Dio _dio;
+  FormationsRepository(this._dio);
+
+  Future<List<Formation>> getFormations() async {
+    final response = await _dio.get(ApiEndpoints.formations());
+    final data = response.data as List;
+    return data
+        .map((json) => Formation.fromJson(json as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<List<ModuleFormation>> getModules(String formationId) async {
+    final response = await _dio.get(ApiEndpoints.formationModules(formationId));
+    final data = response.data as List;
+    return data
+        .map((json) => ModuleFormation.fromJson(json as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<List<Cours>> getCoursDuModule(String moduleId) async {
+    final response = await _dio.get(ApiEndpoints.moduleCours(moduleId));
+    final data = response.data as List;
+    return data
+        .map((json) => Cours.fromJson(json as Map<String, dynamic>))
+        .toList();
+  }
+}
+
+final formationsRepositoryProvider = Provider<FormationsRepository>((ref) {
+  final dio = ref.watch(dioProvider);
+  return FormationsRepository(dio);
+});
