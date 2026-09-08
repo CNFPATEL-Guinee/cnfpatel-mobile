@@ -1,7 +1,9 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:jitsi_meet_flutter_sdk/jitsi_meet_flutter_sdk.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../authentification/providers/auth_controller.dart';
 import '../../../../core/api/api_client.dart';
@@ -12,9 +14,6 @@ class ClassesVirtuellesScreen extends ConsumerWidget {
   final String formationId;
   const ClassesVirtuellesScreen({super.key, required this.formationId});
 
-  // Extrait le nom de la salle depuis l URL complete (ex: https://meet.jit.si/MaSalle -> MaSalle),
-  // requis par le SDK Jitsi embarque (il ne prend pas une URL complete, juste
-  // un nom de salle + un serveur separement).
   String _extraireNomSalle(String lienDirect) {
     final uri = Uri.tryParse(lienDirect);
     if (uri == null || uri.pathSegments.isEmpty) return lienDirect;
@@ -46,14 +45,26 @@ class ClassesVirtuellesScreen extends ConsumerWidget {
       }
     }
 
+    // Le SDK Jitsi embarque est natif Android/iOS uniquement — sur le
+    // web, on ouvre simplement le lien dans un nouvel onglet.
+    if (kIsWeb) {
+      final uri = Uri.parse(classe.lienDirect);
+      if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Impossible d\'ouvrir le lien de la session.')),
+          );
+        }
+      }
+      return;
+    }
+
     final nomSalle = _extraireNomSalle(classe.lienDirect);
 
     final jitsiMeet = JitsiMeet();
     final options = JitsiMeetConferenceOptions(
       room: nomSalle,
       userInfo: nomAffiche != null ? JitsiMeetUserInfo(displayName: nomAffiche) : null,
-      // Desactive certaines fonctions non utiles pour nos sessions de formation
-      // (partage d écran, invitation, etc.) — garde une interface simple.
       featureFlags: {
         'invite.enabled': false,
         'add-people.enabled': false,
