@@ -9,6 +9,7 @@ import '../../../progression/presentation/screens/progression_screen.dart';
 import '../../../quiz/data/repositories/quiz_repository.dart';
 import '../../../quiz/presentation/screens/quiz_screen.dart';
 import '../../data/models/cours_model.dart';
+import '../../../questions_forum/presentation/screens/questions_forum_screen.dart';
 import '../../providers/formations_providers.dart';
 import 'cours_video_screen.dart';
 
@@ -51,6 +52,20 @@ class FormationDetailScreen extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Row(
               children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.forum_outlined),
+                    label: const Text('Questions'),
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => QuestionsForumScreen(formationId: formationId),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(width: 10),
                 Expanded(
                   child: OutlinedButton.icon(
                     icon: const Icon(Icons.videocam_outlined),
@@ -196,3 +211,4 @@ class FormationDetailScreen extends ConsumerWidget {
     );
   }
 }
+

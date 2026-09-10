@@ -18,10 +18,12 @@ class ApiEndpoints {
   static String progression(String utilisateurId, String formationId) =>
       '/progression/$utilisateurId/$formationId';
   static String certificats(String utilisateurId) => '/certificats/$utilisateurId';
-  // Genere et telecharge le PDF officiel du certificat (bordure, logos, sceau).
   static String certificatPdf(String certificatId) => '/certificats/$certificatId/pdf';
   static String notifications(String utilisateurId) => '/notifications/$utilisateurId';
   static String notificationLue(String notificationId) => '/notifications/$notificationId/lue';
   static String modifierMotDePasse(String utilisateurId) => '/profil/$utilisateurId/mot-de-passe';
   static String presences() => '/presences';
+  static String formationQuestions(String formationId) => '/formations/$formationId/questions';
+  static String questionReponses(String formationId, String questionId) =>
+      '/formations/$formationId/questions/$questionId/reponses';
 }
