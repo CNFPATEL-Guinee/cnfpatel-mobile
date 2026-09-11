@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../../authentification/providers/auth_controller.dart';
 import '../../data/models/quiz_model.dart';
@@ -7,6 +8,8 @@ import '../../data/repositories/quiz_repository.dart';
 
 // Écran de passage d un quiz : question par question, avec correction
 // immédiate après chaque réponse, puis score final à la fin.
+// Règle : il faut 100% pour valider le module. Sinon, une nouvelle
+// tentative est possible, mais seulement 24h après la précédente.
 class QuizScreen extends ConsumerStatefulWidget {
   final Quiz quiz;
   const QuizScreen({super.key, required this.quiz});
@@ -27,7 +30,11 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
   int? _scoreFinal;
   bool? _reussiteFinale;
   String? _erreur;
-  bool _dejaPasse = false;
+
+  // Si non nul, l apprenant doit attendre avant de repasser le quiz.
+  DateTime? _prochaineTentativePossible;
+  // Si vrai, l apprenant a deja obtenu 100% : plus besoin de repasser.
+  bool _dejaValide = false;
 
   @override
   void initState() {
@@ -40,19 +47,32 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     final authState = ref.read(authControllerProvider);
     final utilisateurId = authState is AuthConnecte ? authState.utilisateur.id : '';
 
-    // Vérifie d abord si l apprenant a déjà passé ce quiz.
     final resultatExistant = await repo.getResultatExistant(
       quizId: widget.quiz.id,
       utilisateurId: utilisateurId,
-      seuilReussite: widget.quiz.seuilReussite,
     );
+
     if (resultatExistant != null) {
-      setState(() {
-        _dejaPasse = true;
-        _scoreFinal = resultatExistant.score;
-        _reussiteFinale = resultatExistant.reussite;
-      });
-      return;
+      if (resultatExistant.reussite) {
+        // Deja 100% : le module est valide, pas besoin de repasser.
+        setState(() {
+          _dejaValide = true;
+          _scoreFinal = resultatExistant.score;
+          _reussiteFinale = true;
+        });
+        return;
+      }
+      final prochaine = resultatExistant.dateCreation.add(const Duration(hours: 24));
+      if (DateTime.now().isBefore(prochaine)) {
+        // Delai de 24h pas encore ecoule.
+        setState(() {
+          _prochaineTentativePossible = prochaine;
+          _scoreFinal = resultatExistant.score;
+          _reussiteFinale = false;
+        });
+        return;
+      }
+      // 24h ecoulees : on laisse l apprenant repasser le quiz normalement.
     }
 
     try {
@@ -95,21 +115,29 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
         _dernierEstCorrect = null;
         _choixCorrectId = null;
       });
-    } else {
-      // Dernière question répondue — on soumet le quiz complet.
-      final repo = ref.read(quizRepositoryProvider);
-      final authState = ref.read(authControllerProvider);
-      final utilisateurId = authState is AuthConnecte ? authState.utilisateur.id : '';
+      return;
+    }
 
+    // Dernière question répondue — on soumet le quiz complet.
+    final repo = ref.read(quizRepositoryProvider);
+    final authState = ref.read(authControllerProvider);
+    final utilisateurId = authState is AuthConnecte ? authState.utilisateur.id : '';
+
+    try {
       final resultat = await repo.soumettre(
         quizId: widget.quiz.id,
         utilisateurId: utilisateurId,
         reponses: _reponsesDonnees,
-        seuilReussite: widget.quiz.seuilReussite,
       );
       setState(() {
         _scoreFinal = resultat.score;
         _reussiteFinale = resultat.reussite;
+        if (resultat.reussite) _dejaValide = true;
+      });
+    } on TentativeRefuseeException catch (e) {
+      setState(() {
+        _prochaineTentativePossible = e.prochaineTentativePossible;
+        _dejaValide = e.prochaineTentativePossible == null; // 409 = deja 100%
       });
     }
   }
@@ -123,7 +151,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
   }
 
   Widget _construireCorps() {
-    if (_dejaPasse || _scoreFinal != null) {
+    if (_dejaValide || _prochaineTentativePossible != null || _scoreFinal != null) {
       return _ecranResultat();
     }
     if (_erreur != null) {
@@ -202,35 +230,53 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
   }
 
   Widget _ecranResultat() {
-    final reussite = _reussiteFinale ?? false;
+    final formatDateHeure = DateFormat('d MMMM à HH:mm', 'fr_FR');
+
+    String titre;
+    IconData icone;
+    Color couleur;
+    String sousTitre;
+
+    if (_dejaValide) {
+      titre = 'Module validé !';
+      icone = Icons.emoji_events_rounded;
+      couleur = Colors.amber;
+      sousTitre = 'Vous avez obtenu un score parfait de 100%.';
+    } else if (_prochaineTentativePossible != null) {
+      titre = 'Score insuffisant';
+      icone = Icons.replay_circle_filled_rounded;
+      couleur = Colors.grey;
+      sousTitre = 'Un score de 100% est requis pour valider ce module.\n'
+          'Prochaine tentative possible le ${formatDateHeure.format(_prochaineTentativePossible!)}.';
+    } else {
+      titre = 'Quiz terminé';
+      icone = Icons.info_outline_rounded;
+      couleur = Colors.grey;
+      sousTitre = '';
+    }
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              reussite ? Icons.emoji_events_rounded : Icons.replay_circle_filled_rounded,
-              size: 64,
-              color: reussite ? Colors.amber : Colors.grey,
-            ),
+            Icon(icone, size: 64, color: couleur),
             const SizedBox(height: 16),
             Text(
-              reussite ? 'Quiz réussi !' : 'Quiz non réussi',
+              titre,
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Text('Score : $_scoreFinal%'),
-            const SizedBox(height: 4),
-            Text(
-              'Seuil de réussite : ${widget.quiz.seuilReussite}%',
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'Ce quiz ne peut être passé qu une seule fois.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey, fontSize: 12),
+            ),
+            if (_scoreFinal != null) ...[
+              const SizedBox(height: 8),
+              Text('Score : $_scoreFinal%'),
+            ],
+            const SizedBox(height: 12),
+            Text(
+              sousTitre,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
             ),
           ],
         ),

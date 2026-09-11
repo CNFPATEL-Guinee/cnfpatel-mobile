@@ -6,6 +6,14 @@ import '../../../../core/api/api_endpoints.dart';
 import '../models/quiz_model.dart';
 import '../models/resultat_quiz_model.dart';
 
+// Exception levee quand le serveur refuse une nouvelle tentative
+// (delai de 24h pas encore ecoule, ou score deja parfait).
+class TentativeRefuseeException implements Exception {
+  final String message;
+  final DateTime? prochaineTentativePossible;
+  TentativeRefuseeException(this.message, {this.prochaineTentativePossible});
+}
+
 class QuizRepository {
   final Dio _dio;
   QuizRepository(this._dio);
@@ -22,8 +30,6 @@ class QuizRepository {
     return data.map((json) => QuestionQuiz.fromJson(json as Map<String, dynamic>)).toList();
   }
 
-  // Vérifie une réponse à la volée — renvoie si c était correct, et
-  // l identifiant du bon choix (pour l afficher à l apprenant).
   Future<(bool estCorrect, String choixCorrectId)> verifierReponse({
     required String quizId,
     required String questionId,
@@ -37,36 +43,42 @@ class QuizRepository {
     return (data['estCorrect'] as bool, data['choixCorrectId'] as String);
   }
 
-  // Soumission finale de toutes les réponses — calcule et enregistre le score.
+  // Soumission finale — leve TentativeRefuseeException si le serveur
+  // refuse (deja 100%, ou delai de 24h pas encore ecoule).
   Future<ResultatQuiz> soumettre({
     required String quizId,
     required String utilisateurId,
     required List<Map<String, String>> reponses,
-    required int seuilReussite,
   }) async {
-    final response = await _dio.post(
-      ApiEndpoints.quizSoumettre(quizId),
-      data: {'utilisateurId': utilisateurId, 'reponses': reponses},
-    );
-    return ResultatQuiz.fromJson(
-      response.data as Map<String, dynamic>,
-      seuilReussite: seuilReussite,
-    );
+    try {
+      final response = await _dio.post(
+        ApiEndpoints.quizSoumettre(quizId),
+        data: {'utilisateurId': utilisateurId, 'reponses': reponses},
+      );
+      return ResultatQuiz.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 409 || e.response?.statusCode == 429) {
+        final data = e.response?.data as Map<String, dynamic>?;
+        final dateTexte = data?['prochaineTentativePossible'] as String?;
+        throw TentativeRefuseeException(
+          data?['message'] as String? ?? 'Nouvelle tentative refusee.',
+          prochaineTentativePossible: dateTexte != null ? DateTime.parse(dateTexte) : null,
+        );
+      }
+      rethrow;
+    }
   }
 
-  // Vérifie si l apprenant a déjà passé ce quiz (pour bloquer une 2e tentative).
+  // Renvoie la tentative la plus recente de l apprenant sur ce quiz,
+  // ou null s il n en a jamais passe.
   Future<ResultatQuiz?> getResultatExistant({
     required String quizId,
     required String utilisateurId,
-    required int seuilReussite,
   }) async {
     try {
       final response = await _dio.get(ApiEndpoints.quizResultat(quizId, utilisateurId));
       if (response.data == null) return null;
-      return ResultatQuiz.fromJson(
-        response.data as Map<String, dynamic>,
-        seuilReussite: seuilReussite,
-      );
+      return ResultatQuiz.fromJson(response.data as Map<String, dynamic>);
     } catch (_) {
       return null;
     }
