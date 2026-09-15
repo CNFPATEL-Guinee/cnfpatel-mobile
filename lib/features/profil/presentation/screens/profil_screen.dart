@@ -1,7 +1,8 @@
-ï»¿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../authentification/providers/auth_controller.dart';
+import '../../../apropos/presentation/screens/apropos_screen.dart';
 import '../../data/repositories/profil_repository.dart';
 
 class ProfilScreen extends ConsumerStatefulWidget {
@@ -34,7 +35,7 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
     });
 
     final authState = ref.read(authControllerProvider);
-    final utilisateurId = authState is AuthConnecte ? authState.utilisateur.id : '';
+    final utilisateurId = authState is AuthConnecte ? authState.utilisateur.id: '';
 
     try {
       await ref.read(profilRepositoryProvider).modifierMotDePasse(
@@ -43,7 +44,7 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
             nouveauMotDePasse: _nouveauController.text,
           );
       setState(() {
-        _message = 'Mot de passe modifiÃ© avec succÃ¨s.';
+        _message = 'Mot de passe modifié avec succès.';
         _messageEstErreur = false;
         _ancienController.clear();
         _nouveauController.clear();
@@ -130,8 +131,8 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
                 TextFormField(
                   controller: _nouveauController,
                   obscureText: true,
-                  decoration: const InputDecoration(labelText: 'Nouveau mot de passe'),
-                  validator: (v) => (v == null || v.length < 4) ? 'Au moins 4 caractÃ¨res' : null,
+                  decoration: const InputDecoration(labelText: 'Nouveau mot depasse'),
+                  validator: (v) => (v == null || v.length < 4) ? 'Au moins 4 caractères' : null,
                 ),
                 const SizedBox(height: 20),
                 SizedBox(
@@ -149,6 +150,19 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
                 ),
               ],
             ),
+          ),
+          const SizedBox(height: 32),
+          const Divider(),
+          const SizedBox(height: 12),
+          ListTile(
+            leading: const Icon(Icons.info_outline_rounded, color: Color(0xFF1F3864)),
+            title: const Text('À propos'),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const AProposScreen()),
+              );
+            },
           ),
         ],
       ),
