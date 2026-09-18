@@ -5,34 +5,50 @@ import '../data/models/utilisateur_model.dart';
 import '../data/repositories/auth_repository.dart';
 import '../data/repositories/session_storage.dart';
 
-// Toutes les "situations" possibles dans lesquelles l'utilisateur peut se
-// trouver vis-à-vis de la connexion.
 sealed class AuthState {
   const AuthState();
 }
 
-// Au tout premier lancement de l'app : on vérifie s'il existe déjà une
-// session enregistrée sur le téléphone, avant d'afficher quoi que ce soit.
 class AuthVerificationEnCours extends AuthState {
   const AuthVerificationEnCours();
 }
 
-// Personne n'est connecté — l'écran de connexion doit s'afficher.
 class AuthNonConnecte extends AuthState {
   final String? messageErreur;
   const AuthNonConnecte({this.messageErreur});
 }
 
-// L'utilisateur vient d'appuyer sur "Se connecter", on attend la réponse
-// du serveur.
 class AuthConnexionEnCours extends AuthState {
   const AuthConnexionEnCours();
 }
 
-// La connexion a réussi.
 class AuthConnecte extends AuthState {
   final Utilisateur utilisateur;
   const AuthConnecte(this.utilisateur);
+}
+
+// Etats propres a l ecran d inscription (separes de la connexion, pour
+// ne pas se marcher dessus si les deux ecrans existent en meme temps).
+sealed class InscriptionState {
+  const InscriptionState();
+}
+
+class InscriptionInitiale extends InscriptionState {
+  const InscriptionInitiale();
+}
+
+class InscriptionEnCours extends InscriptionState {
+  const InscriptionEnCours();
+}
+
+class InscriptionReussie extends InscriptionState {
+  final String message;
+  const InscriptionReussie(this.message);
+}
+
+class InscriptionEchouee extends InscriptionState {
+  final String message;
+  const InscriptionEchouee(this.message);
 }
 
 class AuthController extends StateNotifier<AuthState> {
@@ -88,6 +104,42 @@ class AuthController extends StateNotifier<AuthState> {
   }
 }
 
+// Controleur separe pour l inscription, pour ne pas interferer avec l
+// etat de connexion (l utilisateur n est jamais connecte apres une
+// inscription, puisqu elle reste en attente d approbation).
+class InscriptionController extends StateNotifier<InscriptionState> {
+  final AuthRepository _repository;
+  InscriptionController(this._repository) : super(const InscriptionInitiale());
+
+  Future<void> inscrire({
+    required String nom,
+    required String prenom,
+    required String telephone,
+    required String motDePasse,
+    required String role,
+    String? rang,
+  }) async {
+    state = const InscriptionEnCours();
+    try {
+      final message = await _repository.inscrire(
+        nom: nom,
+        prenom: prenom,
+        telephone: telephone,
+        motDePasse: motDePasse,
+        role: role,
+        rang: rang,
+      );
+      state = InscriptionReussie(message);
+    } on ErreurInscription catch (e) {
+      state = InscriptionEchouee(e.message);
+    } catch (_) {
+      state = const InscriptionEchouee('Une erreur est survenue. Veuillez réessayer.');
+    }
+  }
+
+  void reinitialiser() => state = const InscriptionInitiale();
+}
+
 final authControllerProvider =
     StateNotifierProvider<AuthController, AuthState>((ref) {
   return AuthController(
@@ -95,4 +147,9 @@ final authControllerProvider =
     ref.watch(sessionStorageProvider),
     ref,
   );
+});
+
+final inscriptionControllerProvider =
+    StateNotifierProvider<InscriptionController, InscriptionState>((ref) {
+  return InscriptionController(ref.watch(authRepositoryProvider));
 });

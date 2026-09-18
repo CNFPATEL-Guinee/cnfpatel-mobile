@@ -2,6 +2,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../providers/auth_controller.dart';
+import 'inscription_screen.dart';
 
 class ConnexionScreen extends ConsumerStatefulWidget {
   const ConnexionScreen({super.key});
@@ -148,6 +149,15 @@ class _ConnexionScreenState extends ConsumerState<ConnexionScreen> {
                             child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                           )
                         : const Text('Se connecter', style: TextStyle(fontSize: 16)),
+                  ),
+                  const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const InscriptionScreen()),
+                      );
+                    },
+                    child: const Text('Pas encore de compte ? Créer un compte'),
                   ),
                 ],
               ),
