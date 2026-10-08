@@ -1,9 +1,9 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../providers/auth_controller.dart';
 
-const _rangs = ['Prefet', 'Sous-prefet', 'Secretaire-general', 'Maire', 'Chef-cabinet'];
+const _rangs = ['Prefet', 'Sous-prefet', 'Secretaire-general', 'Maire', 'Chef-cabinet', 'Gouverneur', 'Autres'];
 
 class InscriptionScreen extends ConsumerStatefulWidget {
   const InscriptionScreen({super.key});
