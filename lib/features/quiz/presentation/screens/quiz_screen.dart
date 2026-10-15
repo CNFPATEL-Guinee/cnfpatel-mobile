@@ -1,10 +1,11 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../authentification/providers/auth_controller.dart';
 import '../../data/models/quiz_model.dart';
 import '../../data/repositories/quiz_repository.dart';
+import '../../data/models/resultat_quiz_model.dart';
 
 // Écran de passage d un quiz : question par question, avec correction
 // immédiate après chaque réponse, puis score final à la fin.
@@ -241,12 +242,12 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
       titre = 'Module validé !';
       icone = Icons.emoji_events_rounded;
       couleur = Colors.amber;
-      sousTitre = 'Vous avez obtenu un score parfait de 100%.';
+      sousTitre = 'Vous avez atteint le score requis ($seuilValidation%).';
     } else if (_prochaineTentativePossible != null) {
       titre = 'Score insuffisant';
       icone = Icons.replay_circle_filled_rounded;
       couleur = Colors.grey;
-      sousTitre = 'Un score de 100% est requis pour valider ce module.\n'
+      sousTitre = 'Un score de $seuilValidation% est requis pour valider ce module.\n'
           'Prochaine tentative possible le ${formatDateHeure.format(_prochaineTentativePossible!)}.';
     } else {
       titre = 'Quiz terminé';

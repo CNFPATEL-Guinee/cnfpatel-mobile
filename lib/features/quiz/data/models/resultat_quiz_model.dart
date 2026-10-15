@@ -1,4 +1,4 @@
-﻿class ResultatQuiz {
+class ResultatQuiz {
   final String id;
   final int score;
   final bool reussite;
@@ -17,8 +17,12 @@
     return ResultatQuiz(
       id: json['_id'] as String,
       score: score,
-      reussite: score >= 100,
+      reussite: score >= seuilValidation,
       dateCreation: DateTime.parse(json['createdAt'] as String),
     );
   }
 }
+
+// Score minimum (en %) pour valider un module.
+// A garder identique a SEUIL_VALIDATION du backend (config/quiz.js).
+const int seuilValidation = 75;
