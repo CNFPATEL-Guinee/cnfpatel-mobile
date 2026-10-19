@@ -1,8 +1,10 @@
-﻿import 'dart:io';
+import 'dart:io';
 
 import 'package:chewie/chewie.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../documents/data/repositories/documents_repository.dart';
@@ -97,7 +99,23 @@ class _CoursVideoScreenState extends ConsumerState<CoursVideoScreen> {
     );
   }
 
+  // Version web : le stockage hors-ligne n'existe pas dans un navigateur.
+  // On ouvre donc la vidéo dans un nouvel onglet, d'où l'utilisateur
+  // peut l'enregistrer s'il le souhaite.
+  Widget _boutonWeb() {
+    return IconButton(
+      icon: const Icon(Icons.open_in_new_rounded),
+      tooltip: 'Ouvrir la vidéo dans un nouvel onglet',
+      onPressed: () => launchUrl(
+        Uri.parse(widget.cours.urlFichier),
+        webOnlyWindowName: '_blank',
+      ),
+    );
+  }
+
   Widget _boutonTelechargement(EtatDocument etat) {
+    // Sur le web, on n'utilise pas le téléchargement local (non supporté).
+    if (kIsWeb) return _boutonWeb();
     return switch (etat) {
       DocumentNonTelecharge() => IconButton(
           icon: const Icon(Icons.download_for_offline_outlined),
